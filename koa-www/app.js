@@ -8,6 +8,7 @@ var logger = require('../conf/log.js');
 
 var app = new koa();
 var db = require('../conf/db.js');
+var ustr  = require('../lib/ustr.js');
 
 app.use(async function (ctx,next){
   await next();
@@ -48,19 +49,21 @@ app.use(async function handleErrors(ctx, next) {
 router.get('/index', async function (ctx){
     
     // all down test ok;
-    var ls = await db.query("select ZIAccId,bzTypeId,selConsault from ZZ_BZ_ORDER_CART where ZIAccId =? ",['af4f06965c234dafac566b438718ed59']);
+    var ls = await db.query("select ZIAccId,bzTypeId,selConsault from ZZ_BZ_ORDER_CART where ZIAccId =? limit 0,10",['af4f06965c234dafac566b438718ed59']);
     //var ls = await db.exec("update ZZ_BZ_ORDER_CART set selConsault='bbbbbbb' where ZIAccId =? and orderSubId = ? ",['af4f06965c234dafac566b438718ed59','20170329155519141001']);
     
     //var ls = await db.getCell("select count(0) from ZZ_BZ_ORDER_CART where ZIAccId =?",['af4f06965c234dafac566b438718ed59']);
     
     //var ls = await db.exec("insert into UR_RESX values('001','res_type','resName',?)",['wokao']);
     
-    console.log(ls);
-    
+    //console.log(ls);
+    ctx.session.user = ustr.getLongId();
     await ctx.render('index', {title : "我是NodeJs测试", list : ls});
 }); 
 
-
+router.post('/file', async function (ctx){
+    console.log(JSON.stringify(ctx.request.body));
+}); 
 
 app.use(router.routes());
 

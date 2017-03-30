@@ -6,10 +6,10 @@ const path = require('path');
 const body     = require('koa-body');       // body parser
 const compose  = require('koa-compose');    // middleware composer
 const compress = require('koa-compress');   // HTTP compression
-const session  = require('koa-session');    // session for flash messages
+const session  = require("koa-session2");    // session for flash messages
 
 const serve = require('koa-static');  
-
+const ustr  = require('./lib/ustr.js');
 
 
 const log4js = require('koa-log4');
@@ -17,6 +17,7 @@ const log4js = require('koa-log4');
 var logger = require('./conf/log.js');
 
 logger.info('--------step into koa-------------')
+logger.info('__dirname:'+__dirname);
 
 
 var app = new koa();
@@ -41,19 +42,22 @@ app.use(async function (ctx,next){
 });
 
 //compress if need;
-app.use(compress({}));
+//app.use(compress({}));
 
 
 // parse request body into ctx.request.body
-app.use(body());
+app.use(body({
+    multipart: true,
+    formLimit: 20,
+    formidable: {
+      uploadDir: __dirname + '/upload'
+    }
+}))
 
 // session for flash messages (uses signed session cookies, with no server storage)
-app.use(session(app)); // note koa-session@3.4.0 is v1 middleware which generates deprecation notice
-
-
-// set signed cookie keys for JWT cookie & session cookie
-app.keys = ['koa-sample-app-xxx'];
-
+app.use(session({
+    key: "xxxxxxxxxxx",   //default "koa:sess"
+}));
 
 app.use(async function (ctx,next){
   await next();
@@ -65,6 +69,7 @@ app.use(async function (ctx,next){
 
 app.use(async function composeSubapp(ctx){
     await compose(require('./koa-www/app.js').middleware)(ctx);
+    console.log("session user:"+ctx.session.user)
 });
 
 

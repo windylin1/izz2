@@ -20,14 +20,13 @@ db.execute = async function(strsql,params){
     
     //when prod  no use;
     logger.info('sql exec called');
-    logger.info(strsql);
-    logger.info(params);
+    //logger.info(strsql);
+    //logger.info(params);
 
     let conn = await connPool.getConnection();
     try{
         let res= await conn.execute(strsql,params); //sql使用?,params[1,2],其类型和数量要自己匹配; 返回为[rows,fields]
         await conn.release();
-        console.log(res);
         return res;
     }catch(e){
         await conn.release();
