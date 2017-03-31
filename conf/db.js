@@ -73,3 +73,5 @@ db.exec =async function(strsql,params){
 db.trans = null;
 
 module.exports  = db;
+
+
