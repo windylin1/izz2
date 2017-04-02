@@ -115,15 +115,50 @@ function async findBySql(sa,entityCode,selsql,sqlWhere="",params=null,sqlOrder="
         sqlWhere = _addUaCtl(sa,entityCode,sqlWhere);
     }
 
+    let sqlPage = "";
+    if(ispage!=0){
+        ipage = ipage<=0?1:ipage;
+        isize = isize<1?:10:isize;
+        sqlPage = " limit "+(ipage-1)*isize + ","+isize;
+    }
+
+    let strsql = selsql + sqlWhere + sqlOrder+sqlPage;
+
+    await ls = db.query(strsql,params);
+    return ls;
 }    
 
-//更新
-function async update(){
+//更新, update 只校验提供的字段,不校验未提供的字段的require与否;
+function async update(sa,entityCode,entity){
+    
+    //校验权限; --数据库中获取看是否成功;
+    //校验实体,validate;
+    //生成sql
+    //使用trans执行语句;
+}
+
+//
+function async updateMany(sa,entityCode,entitys){
 
 }
 
-//增加
-function async add(){
+//注意此时不做实体校验;只用于系统性批量操作,但依然判断权限;
+function async updateBySql(sa,entityCode,strsql){
+
+}
+
+//增加,校验提供的字段,同时校验未提供的字段的require; 所有的校验都是并列的;有一些关联性的校验无法在此处理;需要调用方自己处理;
+//不提供insertBySql;
+function async insert(){
+
+}
+
+function async insertMany(){
+
+}
+
+//注意此时不做实体校验;只用于系统性操作; 但依然判断权限;
+function async insertBySql(){
 
 }
 

@@ -77,7 +77,8 @@ db.getCell =async function(strsql,params,conn=null){
 db.exec =async function(strsql,params,conn=null){
     try{
         let res = await db.execute(strsql,params,conn);
-        return res[0]['affectedRows'];    }
+        return res[0]['affectedRows'];   
+    }
     catch(e){
         throw e;
     }
