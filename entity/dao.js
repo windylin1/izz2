@@ -5,11 +5,13 @@ const ustr = require('../lib/ustr.js');
 let m = new Map(); //entities;
 let mcols = new Map();
 let cols = new Map();
+let mPks = new Map();
 
 if(true){
    await init();
 }
 
+//Found IsFK,urctl没用;
 function async init(){
         //get m from db; 这里不应该是异步的; 暂时先这么处理;
     let ls =await db.query('select * from BASE_ENTITY',null);
@@ -31,6 +33,8 @@ function async init(){
 
     for(let c of ls2){
         cols.set(c.Fid,c);
+
+        if(c.IsPK==1) mPks.add(c.EntityCode,c);
 
         if(!m.has(c.EntityCode)){ continue;}
 
@@ -65,7 +69,8 @@ function async init(){
 
                 let arrNames =new Set(_.pluck(arrls,'FldName'));
 
-                let newCols =_.pluck(_.filter(parrls,function(a){return !arrNames.has(a.FldName);}),'Fid');
+                //pk can not be inhreited
+                let newCols =_.pluck(_.filter(parrls,function(a){return !arrNames.has(a.FldName)&&a.IsPK!=1;}),'Fid');
 
                 for(let a of newCols){
                     arr.add(a);
@@ -81,7 +86,7 @@ function async init(){
     //finish
 }
 
-//获取某实体;
+//获取某实体; 注意, 不支持in参数,如果使用in,请自己把in拼接到sql中; --注意防注入的问题;使用ustr.ls2sqlWhere()
 function async first(sa,entityCode,flds="*",sqlWhere="",params=null){
 
     let ls = await findBySql(sa,entityCode,flds,sqlWhere,params);
@@ -92,6 +97,14 @@ function async first(sa,entityCode,flds="*",sqlWhere="",params=null){
 }
 
 function async firstByKey(sa,entityCode,key,flds="*"){
+
+    if(!m.has(entityCode)) return null;
+    if(!key) return null;
+
+    let strWhere=" where " mPks.get(entityCode).FldName+"=?";
+    let params=[key];
+
+    await obj = first(sa,entityCode,flds,strWhere,params);
 
 }
 
@@ -108,7 +121,7 @@ function async find(sa,entityCode,flds="*",sqlWhere="",params=null,sqlOrder="",i
     return ls;
 }
 
-//获取某些实体;
+//获取某些实体;手写sql;
 function async findBySql(sa,entityCode,selsql,sqlWhere="",params=null,sqlOrder="",ispage=0,ipage=0,isize=10){
 
     if(!(sa.isSYS||sa.isAdmin)){
@@ -128,23 +141,89 @@ function async findBySql(sa,entityCode,selsql,sqlWhere="",params=null,sqlOrder="
     return ls;
 }    
 
+function async countBySql(sa,entityCode,sqlWhere="",params=null){
+
+    if(!(sa.isSYS||sa.isAdmin)){
+        sqlWhere = _addUaCtl(sa,entityCode,sqlWhere);
+    }
+
+    if(!m.has(entityCode)) return 0;
+
+    let tmp = m.get(entityCode);
+    
+    let selsql = "select count(0) as num from "+tmp.TblName;
+
+    let strsql = selsql + sqlWhere ;
+
+    await num = db.getCell(strsql,params);
+
+    return num;
+}    
+
 //更新, update 只校验提供的字段,不校验未提供的字段的require与否;
 function async update(sa,entityCode,entity){
     
-    //校验权限; --数据库中获取看是否成功;
+    if(!m.has(entityCode)) return 0;
+
+    let key = mPks.get(entityCode).FldName;
+
+    //校验权限; --数据库中获取看是否成功;--
+    let obj = firstByKey(sa,entityCode,entity.key);
+
+    if(!obj) return  0; //校验未通过;
+    
     //校验实体,validate;
+    
+
+
     //生成sql
     //使用trans执行语句;
 }
 
-//
+function _validateObj(entityCode,entitys){
+    let ls = mcols.get(entityCode);
+    let bl = true;
+
+    for(let a of ls){
+        if(a.IsValidate==1){
+            //对每一个entity校验;
+            let vlds = JSON.Parse(a.Validates);
+            for(let vld of vlds){
+                for(let et of entitys){
+                    if(vld.type=='require'&&!et[a.FldName]){
+                        throw;//不为空校验未通过;
+                    }
+                }
+            }
+        }
+
+        //校验长度;类型等;赋默认值;
+        for(let et of entitys){
+            if(fldType=='varchar'){
+                if(et[a.FldName]&&a.FldSize&&et[a.FldName].length>FldSize){
+                    throw; //超长;
+                }
+
+                if(!et[a.FldName]) et[a.FldName] = a.DefVal;
+            }
+            if(fldType=='int'){
+
+            }
+        }
+
+
+    }
+
+}
+
+
 function async updateMany(sa,entityCode,entitys){
 
 }
 
-//注意此时不做实体校验;只用于系统性批量操作,但依然判断权限;
+//注意此时不做实体校验;只用于系统性批量操作,但依然判断权限; 不实用;
 function async updateBySql(sa,entityCode,strsql){
-
+    return false;
 }
 
 //增加,校验提供的字段,同时校验未提供的字段的require; 所有的校验都是并列的;有一些关联性的校验无法在此处理;需要调用方自己处理;
@@ -157,14 +236,43 @@ function async insertMany(){
 
 }
 
-//注意此时不做实体校验;只用于系统性操作; 但依然判断权限;
+//注意此时不做实体校验;只用于系统性操作; 但依然判断权限; 不用;如果by sql,直接调用sql就好;
 function async insertBySql(){
-
+    return false;
 }
 
 
 function _addUaCtl(sa,entityCode,sqlWhere){
+    if(sa.isAdmin||sa.isSYS){
+        return sqlWhere;
+    }
 
+    let ls = mcols.get(entityCode);
+    
+    ls = _.filter(ls,function(a){ return (a.IsPK==1&&m.get(a.EntityCode).IsRes==1)||m.get(a.FKEntityCode).IsRes==1;}) //从这里看来是否控制权限并不取决于这里的设置,主要是Entitycoe/FKEntityCode isRes决定的;
+    
+    if(!ls) return sqlWhere;
+
+    if(sqlWhere) sqlWhere+=" where 1=1 and ";
+    
+    //get the roles;
+    
+    let rolestr = ustr.ls2sqlStr(sa.roles);
+
+    for(let i of ls){
+        a = cols.get(i);
+
+        if(a.IsPK==1){
+            sqlWhere += " and "+a.FldName+" in (select resId from UserAccess where roleId in ("+rolestr+") and ZIAccId in('0','"+sa.uid+"') and resType='"+a.EntityCode+"')";   
+        }
+        else{
+            sqlWhere += " and "+a.FldName+" in (select resId from UserAccess where roleId in ("+rolestr+") and ZIAccId in('0','"+sa.uid+"') and resType='"+a.FKEntityCode+"')";      
+        }
+        
+    }
+
+    return sqlWhere;
+   
 }
 
 
