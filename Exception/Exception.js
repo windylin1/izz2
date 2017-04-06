@@ -12,6 +12,13 @@ util.inherits(zzException, Error);
 
 var obj = new Object();
 
-obj.getErrUserNoLogin101 = function(){
-	return new zzException("101"," the User is not login! ");
+obj.getErrUserNoLogin101 = function(msg){
+	return new zzException("101",msg||" the User is not login! ");
 }
+
+obj.getErrValidate900 = function(msg){
+    return new zzException("900",msg||"");
+}
+
+
+module.exports = obj;

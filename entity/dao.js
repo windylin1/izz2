@@ -1,11 +1,14 @@
 const db=require('../conf/db.js')
 const _ = require('underscore')._;
 const ustr = require('../lib/ustr.js');
+const Err = require('../Exception/Exception.js');
+
 
 let m = new Map(); //entities;
 let mcols = new Map();
 let cols = new Map();
 let mPks = new Map();
+
 
 if(true){
    await init();
@@ -32,6 +35,8 @@ function async init(){
     }
 
     for(let c of ls2){
+        
+        c.Validates = JSON.Parse(c.Validates);
         cols.set(c.Fid,c);
 
         if(c.IsPK==1) mPks.add(c.EntityCode,c);
@@ -187,11 +192,11 @@ function _validateObj(entityCode,entitys){
     for(let a of ls){
         if(a.IsValidate==1){
             //对每一个entity校验;
-            let vlds = JSON.Parse(a.Validates);
+            let vlds = a.Validates;
             for(let vld of vlds){
                 for(let et of entitys){
                     if(vld.type=='require'&&!et[a.FldName]){
-                        throw;//不为空校验未通过;
+                        throw Err.getErrValidate900(vld.msg);//不为空校验未通过;
                     }
                 }
             }
