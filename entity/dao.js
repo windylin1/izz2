@@ -185,32 +185,53 @@ function async update(sa,entityCode,entity){
     //使用trans执行语句;
 }
 
+
+//validate
+//require/number/int/datetime/email/chs/eng/max/min/between/enum
+//
+//
 function _validateObj(entityCode,entitys){
     let ls = mcols.get(entityCode);
     let bl = true;
 
     for(let a of ls){
         if(a.IsValidate==1){
-            //对每一个entity校验;
+            //对每一个entity校验; vld.msg应该使用文本格式化;
             let vlds = a.Validates;
             for(let vld of vlds){
                 for(let et of entitys){
                     if(vld.type=='require'&&!et[a.FldName]){
-                        throw Err.getErrValidate900(vld.msg);//不为空校验未通过;
+                        throw Err.getErrValidate900( vld.msg||a.FldName+","+a.FldLabel+",不能为空!" );//不为空校验未通过;
                     }
+                    else if(vld.type=='number'&&!ustr.isNumber(et[a.FldName]) ){
+                        throw Err.getErrValidate900( vld.msg||a.FldName+","+a.FldLabel+",必须为数字!" );//不为空校验未通过;
+                    }
+                    else if(vld.type=='int'&&!ustr.isInt(et[a.FldName]) ){
+                        throw Err.getErrValidate900( vld.msg||a.FldName+","+a.FldLabel+",必须为整数!" );//不为空校验未通过;
+                    }
+                    else if(vld.type=='datetime'&&!ustr.isDate(et[a.FldName]) ){
+                        throw Err.getErrValidate900( vld.msg||a.FldName+","+a.FldLabel+",必须为日期类型!" );//不为空校验未通过;
+                    }
+                    else if(vld.type=='email'&&!ustr.isEmail(et[a.FldName]) ){
+                        throw Err.getErrValidate900( vld.msg||a.FldName+","+a.FldLabel+",邮箱格式不正确!" );//不为空校验未通过;
+                    }
+
+
                 }
             }
         }
 
         //校验长度;类型等;赋默认值;
         for(let et of entitys){
-            if(fldType=='varchar'){
+            if(fldType=='varchar'){ //varchar,int,double,datetime,
                 if(et[a.FldName]&&a.FldSize&&et[a.FldName].length>FldSize){
-                    throw; //超长;
+                    throw Err.getErrValidate900(""); //超长;
                 }
 
                 if(!et[a.FldName]) et[a.FldName] = a.DefVal;
             }
+            
+            //赋值,默认值;
             if(fldType=='int'){
 
             }

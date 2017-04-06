@@ -17,7 +17,7 @@ obj.getErrUserNoLogin101 = function(msg){
 }
 
 obj.getErrValidate900 = function(msg){
-    return new zzException("900",msg||"");
+    return new zzException("900",msg||"提交数据校验失败!");
 }
 
 
