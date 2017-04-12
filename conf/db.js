@@ -120,7 +120,10 @@ db.transFunc = async function(obj,func){
     } 
 };
 
-//use for many sql; infact it's not only for exec ;
+db.format = function(sql,param){
+    return mysql.format(sql, param);
+}
+//use for many sql; infact it's not only for exec ,for insert/update sql;
 
 db.transExec= async function(sql){
 
