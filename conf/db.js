@@ -3,13 +3,20 @@ var conns = {
         host: '114.215.31.128', 
         user: 'root',
         password: 'zhenipRootZAQ!',
-        database:'ZZ.TEST',
+        database:'ZZ',
+        port: 3306
+    },
+    zz2: {
+        host: '10.20.32.252', 
+        user: 'root',
+        password: 'Zz000000*',
+        database:'ZZ',
         port: 3306
     }
 };
 
 var mysql= require('mysql2/promise'); // fast mysql driver
-
+var mysqlLib= require('mysql2'); // fast mysql driver
 
 var connPool = mysql.createPool(conns.zz); // put in global to pass to sub-apps
 var logger = require('./log.js');
@@ -25,8 +32,12 @@ db.execute = async function(strsql,params,conn=null){
     
     //when prod  no use;
     logger.info('sql exec called');
-    //logger.info(strsql);
+    logger.info(strsql);
     //logger.info(params);
+    
+    if(params==null||params==undefined){
+        params=[];
+    }
     
     let isInnerConn =false;
 
@@ -49,9 +60,12 @@ db.execute = async function(strsql,params,conn=null){
 }
 
 db.query=async function(strsql,params,conn=null){
-
+    
+    console.log(strsql);
+    
     try{
         let res = await db.execute(strsql,params,conn);
+              
         return res[0];
     }
     catch(e){
@@ -121,7 +135,7 @@ db.transFunc = async function(obj,func){
 };
 
 db.format = function(sql,param){
-    return mysql.format(sql, param);
+    return mysqlLib.format(sql, param);
 }
 //use for many sql; infact it's not only for exec ,for insert/update sql;
 
@@ -144,6 +158,9 @@ db.transExec= async function(sql){
         await conn.release();
      } 
 }
+
+
+
 
 
 //
@@ -176,6 +193,8 @@ db.transExec= async function(sql){
     }
 
  */
+ 
+ 
 
 module.exports  = db;
 

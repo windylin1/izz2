@@ -9,7 +9,13 @@ var logger = require('../conf/log.js');
 var app = new koa();
 var db = require('../conf/db.js');
 var ustr  = require('../lib/ustr.js');
-var test3 = require('../entity/test.js');
+
+//var test3 = require('../entity/test.js');
+
+var dao = require('../entity/dao.js');
+var entity = require('../entity/entity.js');
+var ua = require('../entity/ua.js');
+
 
 app.use(async function (ctx,next){
   await next();
@@ -61,10 +67,22 @@ router.get('/index', async function (ctx){
     
     //await test3(); --for test;async trans;
 
-    var ls = await db.query("select ZIAccId,bzTypeId,selConsault from ZZ_BZ_ORDER_SUB  limit 0,10",null);
+    //var ls = await db.query("select ZIAccId,bzTypeId,selConsault from ZZ_BZ_ORDER_SUB  limit 0,10",null);
     
     //console.log(ls);
-    ctx.session.user = ustr.getLongId();
+    //ctx.session.user = ustr.getLongId(); //test session;
+    
+    logger.info('test3..............');
+    
+    //test dao;
+    let a = dao.getNew(entity.ZZ_COMMON_MEDIA);
+    let sa = ua.getSysSa();
+    
+    await dao.insert(sa,entity.ZZ_COMMON_MEDIA,a);
+    
+
+    
+    
     await ctx.render('index', {title : "我是NodeJs测试", list : ls});
 
 }); 

@@ -1,6 +1,6 @@
 let ustr = require ('../lib/ustr.js')
 
-class SessionUserAccess(){
+class SessionUserAccess{
     
     constructor(uid,ucookie){
  	    this.uid = uid;
@@ -9,15 +9,24 @@ class SessionUserAccess(){
 
     }
 
-    function isLogin(){
+    isLogin(){
     	return  !ustr.isnul(this.uid);
     }
 
-    function isSYS{
+    isSYS(){
     	return this.roles.has('sys')&&this.uid=='sys';
     }
 
-    function isAdmin(){
+    isAdmin(){
     	return this.roles.has('admin');
     }
+    
+    static getSysSa(){
+        let sa = new SessionUserAccess('sys','sys');
+        sa.roles = ['sys'];
+    }
 }
+
+
+
+module.exports = SessionUserAccess;

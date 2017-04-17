@@ -16,6 +16,12 @@ const log4js = require('koa-log4');
 
 var logger = require('./conf/log.js');
 
+
+const dao = require('./entity/dao.js');
+
+
+
+
 logger.info('--------step into koa-------------')
 logger.info('__dirname:'+__dirname);
 
@@ -59,22 +65,32 @@ app.use(session({
     key: "xxxxxxxxxxx",   //default "koa:sess"
 }));
 
+
+
 app.use(async function (ctx,next){
   await next();
 });
 
-
+//非常重要,初始化dao模块; 引用时已初始;
+/*
+app.use(async function(ctx,next){
+    dao.init();
+    await next();
+});
+*/
 
 // response
 
 app.use(async function composeSubapp(ctx){
+    
     await compose(require('./koa-www/app.js').middleware)(ctx);
-    console.log("session user:"+ctx.session.user)
+    //console.log("session user:"+ctx.session.user)
 });
 
 
 app.on('error',function(err){
     logger.error("Server error:",err);
+    //throw err;
 });
 
 app.listen(3000);
