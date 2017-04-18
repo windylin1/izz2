@@ -8,9 +8,9 @@ var logger = require('../conf/log.js');
 
 
 let m = new Map(); //entities;
-let mcols = new Map();
-let cols = new Map();
-let mPks = new Map();
+let mcols = new Map(); //entity->colslist;
+let cols = new Map(); //col info
+let mPks = new Map(); //entity-pk
 
 let UPDATE_FIELD = "TIMESTAMPUPDATE";
 let CREATE_FIELD = "TIMESTAMPCREATE";
@@ -86,33 +86,39 @@ dao.init=async function(v=0){
         logger.info('begin orm init...4');
         //递归父级对象的属性; 如果子级已经有的,以子级为准;
         
+        //...为扩展运算符;
+        let _tmp = [...m.values()].filter(a=>a.EntityPCode=='0').map(a=>a.EntityCode);        
         
-        let _tmp = _.pluck(_.filter(m.values(),function(a){return !ustr.isnul(a.EntityPCode)&&a.EntityPCode!='0';}),'EntityPCode');
         let _prts = new Set(_tmp);
-        if(_prts){
-           _prts = new Set(_.pluck(_.filter(m.values(),function(a){return _prts.has(a.EntityCode)&&ustr.isnul(a.EntityPCode);}),'EntityCode'));
-        }
-
         let _prtsNew = new Set();
         
-        console.log(_prts);        
+        logger.info('begin orm init...5');
+        
 
-        while(_prts){
+        while(_prts.size>0){ //不能直接使用while(_prts)
+            
+            console.log(_prts);        
+            _prtsNew = new Set();
             for(let k of m.keys()){
-                
                 if( _prts.has(m.get(k).EntityPCode)){
-
+                    
+                    
                     let arr = mcols.get(k);
                     let parr = mcols.get(m.get(k).EntityPCode);
 
+                    console.log(arr,parr);
+
                     let arrls = getlsByKey(arr,cols);
                     let parrls = getlsByKey(parr,cols);
-
-                    let arrNames =new Set(_.pluck(arrls,'FldName'));
+                    
+           
+                    let arrNames =new Set(arrls.map(a=>a.FldName));
 
                     //pk can not be inhreited
-                    let newCols =_.pluck(_.filter(parrls,function(a){return !arrNames.has(a.FldName)&&a.isPK!=1;}),'Fid');
-
+                    let newCols =parrls.filter(a=>!arrNames.has(a.FldName)&&a.isPK!=1).map(a=>a.Fid);
+                    
+                    console.log("newCols:",newCols)
+                    
                     for(let a of newCols){
                         arr.add(a);
                     }
@@ -127,19 +133,7 @@ dao.init=async function(v=0){
         //finish
         IS_INIT = true;
         
-        console.log('m');
-        console.log(m);
-        
-        console.log('mcols');
-        console.log(mcols);
-        
-        
-        console.log('cols');
-        console.log(cols);
-        
-        console.log('mPks');
-        console.log(mPks);
-        
+        logger.info('------------init db orm finished-------------');
     };
 
 dao.getNew = function (entityCode){
@@ -171,16 +165,19 @@ dao.getNew = function (entityCode){
             }
         }
         
-        return obj;
-        
-        
-        
+        return obj;        
     };
+   
+   
+dao.getNewForUpdate = function(){ 
+    //这里就是控制字段; 然后也只更新那个字段; 也可以通过select 几个field的方式,来获取不完整的实体;
+    return new Object();
+}
 
     //获取某实体; 注意, 不支持in参数,如果使用in,请自己把in拼接到sql中; --注意防注入的问题;使用ustr.ls2sqlWhere()
  dao.first = async function(sa,entityCode,flds="*",sqlWhere="",params=null){
 
-        let ls = await dao.findBySql(sa,entityCode,flds,sqlWhere,params);
+        let ls = await dao.find(sa,entityCode,flds,sqlWhere,params,"",1,0,1);
         if(ls){
             return ls[0];
         }
@@ -227,7 +224,9 @@ dao.getNew = function (entityCode){
         }
 
         let strsql = selsql + sqlWhere + sqlOrder+sqlPage;
-
+        
+        //console.log('selsql:',strsql);
+        
         let ls = await db.query(strsql,params);
         
         return ls;
@@ -247,6 +246,8 @@ dao.getNew = function (entityCode){
 
         let strsql = selsql + sqlWhere ;
 
+        //console.log('countBySql:',strsql);
+        
         let num = await db.getCell(strsql,params);
 
         return num;
@@ -258,7 +259,7 @@ dao.getNew = function (entityCode){
         if(!m.has(entityCode)) return 0;
         if(!entity) return 0;
         
-        entity.UPDATE_FIELD = new Date();
+        entity[UPDATE_FIELD] = new Date();
 
         let mPk = mPks.get(entityCode);
         
@@ -268,7 +269,7 @@ dao.getNew = function (entityCode){
         let tmp = m.get(entityCode);
         
         //校验权限; --数据库中获取看是否成功;--
-        let obj = dao.firstByKey(sa,entityCode,entity.key);
+        let obj = dao.firstByKey(sa,entityCode,entity[key]);
 
         if(!obj) {//校验未通过;
             throw Err.getErrValidate100();
@@ -276,16 +277,7 @@ dao.getNew = function (entityCode){
         
         //获取fld列表; 如果是insert,直接使用ls即可;
         let ls = mcols.get(entityCode);
-        let ls2 = new Set();
-        for(let k in entity){
-            
-            if(k==keyId) continue;  //主键不放进去;
-            
-            if (ls.has(k)){
-                ls2.add(k)
-            }
-        }
-        ls = ls2;
+        ls =new Set([...ls].filter(k=>!(k==keyId)&&entity.hasOwnProperty(cols.get(k).FldName)));
         
         
         
@@ -293,17 +285,22 @@ dao.getNew = function (entityCode){
         _validateObjs(entityCode,[entity],ls);
 
         //生成sql
-        let updatesql  = _getUpdateSql(ls,tmp.TblName);
+        let updatesql  = _getUpdateSql(ls,tmp.TblName,key);
         
         let params = [];
         for(let s of ls){
+            let a = cols.get(s);
             params.push(entity[a.FldName]);
         }
         params.push(entity[key]);
+        
+        
 
+        
         //使用trans执行语句;
         updatesql = db.format(updatesql,params);
         
+        //console.log('updatesql',updatesql);
         return await db.transExec(updatesql);
         
     }
@@ -324,8 +321,8 @@ dao.updateMany= async function(sa,entityCode,entitys){
         let ids = [];
         
         for(let et of entities){
-            et.UPDATE_FIELD = new Date(); //更新字段;
-            ids.push(et.key);
+            et[UPDATE_FIELD] = new Date(); //更新字段;
+            ids.push(et[key]);
         }
         
         //校验权限; --数据库中获取看是否成功;--
@@ -340,15 +337,7 @@ dao.updateMany= async function(sa,entityCode,entitys){
         let entity = entitys[0];
         
         let ls = mcols.get(entityCode);
-        let ls2 = new Set();
-        for(let k in entity){
-            if(k==keyId) continue;  //主键不放进去;
-            
-            if (ls.has(k)){
-                ls2.add(k)
-            }
-        }
-        ls = ls2;
+        ls =new Set([...ls].filter(k=>!(k==keyId)&&entity.hasOwnProperty(cols.get(k).FldName)));
 
         //校验实体,validate;
         _validateObjs(entityCode,entitys,ls);
@@ -357,7 +346,7 @@ dao.updateMany= async function(sa,entityCode,entitys){
 
         
         //many sql;
-        let updatesql = _getUpdateSql(ls,tmp.TblName);
+        let updatesql = _getUpdateSql(ls,tmp.TblName,key);
         let updateManySql = "";
         
         for(let et of entitys){
@@ -372,6 +361,8 @@ dao.updateMany= async function(sa,entityCode,entitys){
             updateManySql+= db.format(updatesql,params)+";";
         }
 
+        
+        //console.log('updateManySql',updateManySql);
         return await db.transExec(updateManySql);
 }
 
@@ -382,9 +373,10 @@ dao.updateMany= async function(sa,entityCode,entitys){
         if(!m.has(entityCode)) return 0;
         if(!entity) return 0;
         
-        entity.UPDATE_FIELD = new Date();
-        entity.CREATE_FIELD = entity.UPDATE_FIELD;
+        entity[UPDATE_FIELD] = new Date();
+        entity[CREATE_FIELD] = entity[UPDATE_FIELD];
         entity.INUSE = 1;
+        
         
         
         let mPk = mPks.get(entityCode);
@@ -392,15 +384,18 @@ dao.updateMany= async function(sa,entityCode,entitys){
         let key = mPk.FldName;
         let keyId= mPk.Fid;
         
+        console.log('haskey:' ,mPk.isAuto==0&&!entity[key]);
         
-        if(mPk.isAuto==0&&!entity.key){ //如果是自动,或者实体是手工给Code的情况;切切,手工给code;需要自己防止重复;
-            entity.key = ustr.getLongId(); //如果不是auto,为其生成键;
+        if(mPk.isAuto==0&&!entity[key]){ //如果是自动,或者实体是手工给Code的情况;切切,手工给code;需要自己防止重复;
+            entity[key] = ustr.getLongId(); //如果不是auto,为其生成键;
         }
         
+        console.log(entity);
+
         let tmp = m.get(entityCode);
         
         //校验权限; --数据库中获取看是否成功;--不校验,实际可以校验一下是否在数据库中已存在;
-        //let obj = firstByKey(sa,entityCode,entity.key);
+        //let obj = firstByKey(sa,entityCode,entity[key]);
 
         //if(!obj) {//校验未通过;
         //    throw Err.getErrValidate100();
@@ -409,15 +404,9 @@ dao.updateMany= async function(sa,entityCode,entitys){
         
         //获取fld列表; 如果是insert,直接使用ls即可;
         let ls = mcols.get(entityCode);
-        let ls2 = new Set();
         
-        for(let k in ls){
-            if(k==keyId&&mPk.isAuto==1) continue;  //主键不放进去;
-            ls2.add(k);
-        }
-        ls = ls2;
+        ls =new Set([...ls].filter(k=>!(k==keyId&&mPk.isAuto==1)));
         
-
         
         //校验实体,validate;
         _validateObjs(entityCode,[entity],ls);
@@ -427,8 +416,12 @@ dao.updateMany= async function(sa,entityCode,entitys){
         
         let params = [];
         
-        params.push(entity[key]);
+        
+        //params.push(entity[key]);
+        
+        
         for(let s of ls){
+            let a = cols.get(s);
             params.push(entity[a.FldName]);
         }
         
@@ -452,17 +445,17 @@ dao.insertMany = async function(sa,entityCode,entitys){
         let tmp = m.get(entityCode);
         
         for(let entity of entitys){
-            entity.UPDATE_FIELD = new Date();
-            entity.CREATE_FIELD = entity.UPDATE_FIELD;
+            entity[UPDATE_FIELD] = new Date();
+            entity[CREATE_FIELD] = entity[UPDATE_FIELD];
             entity.INUSE = 1;
             
-            if(mPk.isAuto==0&&!entity.key){ //如果是自动,或者实体是手工给Code的情况;切切,手工给code;需要自己防止重复;
-                entity.key = ustr.getLongId(); //如果不是auto,为其生成键;
+            if(mPk.isAuto==0&&!entity[key]){ //如果是自动,或者实体是手工给Code的情况;切切,手工给code;需要自己防止重复;
+                entity[key] = ustr.getLongId(); //如果不是auto,为其生成键;
             }
         }
 
         //校验权限; --数据库中获取看是否成功;--不校验,实际可以校验一下是否在数据库中已存在;
-        //let obj = firstByKey(sa,entityCode,entity.key);
+        //let obj = firstByKey(sa,entityCode,entity[key]);
 
         //if(!obj) {//校验未通过;
         //    throw Err.getErrValidate100();
@@ -471,13 +464,7 @@ dao.insertMany = async function(sa,entityCode,entitys){
         
         //获取fld列表; 如果是insert,直接使用ls即可;
         let ls = mcols.get(entityCode);
-        let ls2 = new Set();
-        
-        for(let k in ls){
-            if(k==keyId&&mPk.isAuto==1) continue;  //主键不放进去;
-            ls2.add(k);
-        }
-        ls = ls2;
+        ls =new Set([...ls].filter(k=>!(k==keyId&&mPk.isAuto==1)));
         
         //校验实体,validate;
         _validateObjs(entityCode,entitys,ls);
@@ -490,7 +477,7 @@ dao.insertMany = async function(sa,entityCode,entitys){
         for(let et of entitys){
             let params = [];
             
-            params.push(et[key]); 
+            //params.push(et[key]); 
             for(let s of ls){
                 let a = cols.get(s);
                 params.push(et[a.FldName]);
@@ -517,8 +504,9 @@ dao.insertBySql = async function(){
 
 
 
-function  _getUpdateSql(ls,tbl,entity){
-        let updatesql  = "update "+tmp.TblName + " set ";
+function  _getUpdateSql(ls,tbl,key){
+    
+        let updatesql  = "update "+tbl + " set ";
 
         for(let s of ls){
             let a = cols.get(s);
@@ -532,6 +520,8 @@ function  _getUpdateSql(ls,tbl,entity){
 
     //fld列表,entity,
  function _getInsertSql(ls,tbl){
+     
+        //console.log('ls of insert sql:',ls)
         
         let insertsql  = "insert into  "+tbl + " ( ";
         
@@ -547,7 +537,7 @@ function  _getUpdateSql(ls,tbl,entity){
         }
         insertsql = insertsql.substr(insertsql,insertsql.length-1);
         
-        insertsql+" )";
+        insertsql+=" )";
         
         return insertsql;
 }
@@ -568,13 +558,15 @@ function _validateObjs(entityCode,entitys,ls){
             
             let a= cols.get(s);
             
-            let val = et[a.FldName];
+
             
             if(a.isValidate==1){
                 //对每一个entity校验; vld.msg应该使用文本格式化;
                 let vlds = a.Validates;
                 for(let vld of vlds){
-                    for(let et of entitys){                    
+                    for(let et of entitys){   
+                        let val = et[a.FldName];                    
+                        
                         if (val==null||val==undefined){ //如果没填,可以通过; 是否必填在后面校验;
                             continue;
                         }
@@ -645,7 +637,8 @@ function _validateObjs(entityCode,entitys,ls){
 
             //校验长度;类型等;赋默认值;
             for(let et of entitys){
-                    
+                
+                let val = et[a.FldName];       
                 if(val==null||val==undefined){  
                                         
                     if(!(a.isNull&&a.isNull==1)){
@@ -736,7 +729,7 @@ function  getlsByKey(keyls,m1){
         let ls = new Array();
         for(let k of keyls){
             if(m1.has(k)){
-                ls1.push(m1.get(k));
+                ls.push(m1.get(k));
             }
         }
         return ls;

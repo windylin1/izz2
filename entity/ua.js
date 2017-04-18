@@ -24,8 +24,10 @@ class SessionUserAccess{
     static getSysSa(){
         let sa = new SessionUserAccess('sys','sys');
         sa.roles = ['sys'];
+        return sa;
     }
 }
+
 
 
 

@@ -2,7 +2,7 @@ var conns = {
     zz: {
         host: '114.215.31.128', 
         user: 'root',
-        password: 'zhenipRootZAQ!',
+        password: 'zhenipRootZA@!E',
         database:'ZZ',
         port: 3306
     },

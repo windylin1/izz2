@@ -75,15 +75,21 @@ router.get('/index', async function (ctx){
     logger.info('test3..............');
     
     //test dao;
-    let a = dao.getNew(entity.ZZ_COMMON_MEDIA);
+    //let a = dao.getNew(entity.ZZ_COMMON_MEDIA);
+    let a = dao.getNewForUpdate();
     let sa = ua.getSysSa();
     
-    await dao.insert(sa,entity.ZZ_COMMON_MEDIA,a);
-    
-
+    //await dao.insert(sa,entity.ZZ_COMMON_MEDIA,a);
     
     
-    await ctx.render('index', {title : "我是NodeJs测试", list : ls});
+    //let a = await dao.first(sa,entity.ZZ_COMMON_MEDIA);
+    a.mediaId = '02c6514355264cdcae38db13e4ce272f';
+    a.fExt = ".dgaegaegag";
+    
+    console.log(a);
+    
+    await dao.update(sa,entity.ZZ_COMMON_MEDIA,a);
+    await ctx.render('index', {title : "我是NodeJs测试", list : []});
 
 }); 
 
