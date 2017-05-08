@@ -51,7 +51,9 @@ app.use(async function handleErrors(ctx, next) {
     }
 });
 
-
+router.get('/aaa',async function (ctx){
+    await ctx.render('aaa');
+});
 
 router.get('/index', async function (ctx){
     

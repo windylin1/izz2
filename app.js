@@ -44,7 +44,7 @@ app.use(async function (ctx,next){
   var start = new Date;
   await next();
   var ms = new Date - start;
-  logger.error('%s %s - %s ms', ctx.method, ctx.url, ms);
+  logger.info('%s %s - %s ms', ctx.method, ctx.url, ms);
 });
 
 //compress if need;
