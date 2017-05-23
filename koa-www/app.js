@@ -51,8 +51,11 @@ app.use(async function handleErrors(ctx, next) {
     }
 });
 
-router.get('/aaa',async function (ctx){
-    await ctx.render('aaa');
+router.get('/sel/upload',async function (ctx){
+    await ctx.render('sel_upload');
+});
+router.get('/sel/suite',async function (ctx){
+    await ctx.render('sel_suite');
 });
 
 router.get('/index', async function (ctx){

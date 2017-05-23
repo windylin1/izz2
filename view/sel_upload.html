@@ -19,8 +19,8 @@
     }
     
     .img-item{
-        height:80px;
-        width:80px;
+        height:70px;
+        width:70px;
     }
     
     .div-upload{
@@ -37,13 +37,13 @@
                 <a class="button button-link button-nav pull-left" href="/demos/card" data-transition='slide-out'>
                   <span class="icon icon-left"></span>
                 </a>
-                 <button class="button button-link button-nav pull-right">
-                    <span class="icon icon-menu"></span>
+                 <button class="button button-link button-nav pull-right open-panel" data-panel="#user_center">
+                    <span class="icon icon-me"></span>
                 </button>
                 <h1 class="title">izz</h1>
               </header>
               <nav class="bar bar-tab">
-                 <a class="tab-item external active" href="#">
+                 <a class="tab-item external active" href="/sel/suite">
                   下一步
                  </a>
               </nav>
@@ -79,33 +79,47 @@
                         <img class="img-item" src="#"/>
                       </div>
                     </div>
-                  </div>
-                   <div class="list-block">
-                    <ul>
-                      <li>
-                       <div class="item-content">
-                        <div class="item-input">
-                            <textarea placeholder="Please input the description you want."></textarea>
-                        </div>
-                       </div>
-                       </li>
-                     </ul>
-                    </div>  
-                   <div class="content-padded" style="margin-top:20px; ">
-                        <div class="row">
-                            advs area
-                        </div>
-                   </div>
-              </div>                 
               </div>
-        </div>
+               <div class="list-block">
+                <ul>
+                  <li>
+                   <div class="item-content">
+                    <div class="item-input">
+                        <textarea placeholder="Please input the description you want."></textarea>
+                    </div>
+                   </div>
+                   </li>
+                 </ul>
+                </div>  
+               <div class="content-padded" style="margin-top:20px; ">
+                    <div class="row">
+                      <div class="col-100">
+                         advs area
+                      </div>
+                    </div>
+               </div>
+        </div> 
+   
     </div>
+    <div class="panel panel-right panel-cover" id="user_center">
+    </div>     
 
+    
     <script type='text/javascript' src='//g.alicdn.com/sj/lib/zepto/zepto.min.js' charset='utf-8'></script>
+    <script type='text/javascript' src='/js/sui/config.js' charset='utf-8'></script>
+        
     <script type='text/javascript' src='//g.alicdn.com/msui/sm/0.6.2/js/sm.min.js' charset='utf-8'></script>
     <script type='text/javascript' src='//g.alicdn.com/msui/sm/0.6.2/js/sm-extend.min.js' charset='utf-8'></script>
+    <script type='text/javascript' src='/js/sui/common.js' charset='utf-8'></script>
     <script>
+    $(function () {
+        $(document).on("pageInit", function(e, pageId, $page) {
+            load_common_menu();
+        });
+        
         $.init();
+    });
+        
     </script>
   </body>
 </html>
